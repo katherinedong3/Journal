@@ -170,7 +170,7 @@ packages:
     source: hosted
     version: "1.0.0"
   at_utils:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: at_utils
       sha256: "97507d219c528ee2f3f7aba0d6b2641221e79ff67264fe2e24531dfd8edf8edd"
@@ -258,7 +258,7 @@ packages:
     source: hosted
     version: "0.3.4+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: "1e445881f28f22d6140f181e07737b22f1e099a5e1ff94b0af2f9e4a463f4855"
@@ -529,7 +529,7 @@ packages:
     source: hosted
     version: "0.11.1"
   meta:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: meta
       sha256: e3641ec5d63ebf0d9b41bd43201a66e3fc79a65db5f61fc181f04cd27aab950c
@@ -950,7 +950,7 @@ packages:
     source: hosted
     version: "3.1.4"
   uuid:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: uuid
       sha256: "648e103079f7c64a36dc7d39369cabb358d377078a051d6ae2ad3aa539519313"
