@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:at_client/src/client/at_client_spec.dart';
 import 'package:journal/at_collection/at_collection/at_json_collection_model.dart';
-
 import 'at_collection_model_factory.dart';
 import 'package:at_utils/at_utils.dart';
 import 'package:meta/meta.dart';
@@ -40,9 +40,9 @@ abstract class AtCollectionModel<T> implements AtCollectionModelOperations {
   static final AtCollectionQueryOperations _atCollectionQueryOperations =
       AtCollectionQueryOperationsImpl();
 
-  AtCollectionModel() {
-    _atCollectionModelOperations = AtCollectionModelOperationsImpl(this);
-    streams = AtCollectionModelStreamOperationsImpl(this);
+  AtCollectionModel () {
+    _atCollectionModelOperations = AtCollectionModelOperationsImpl<T>(this);
+    streams = AtCollectionModelStreamOperationsImpl<T>(this);
     // Default the collectionName to the name of the class extending AtCollectionModel
     collectionName = runtimeType.toString().toLowerCase();
   }

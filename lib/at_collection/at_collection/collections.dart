@@ -1,5 +1,6 @@
 import 'package:at_client/at_client.dart';
 
+
 /// Contains CRUD operations that can be performed on [AtCollectionModel]
 abstract interface class AtCollectionModelOperations<T> {
   /// Saves the json representation of [AtCollectionModel] to the secondary server of a atSign.

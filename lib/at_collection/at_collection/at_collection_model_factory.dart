@@ -1,9 +1,10 @@
-import 'package:at_client/src/at_collection/at_collection_model.dart';
+import 'at_collection_model.dart';
 import 'package:meta/meta.dart';
 
 @experimental
 abstract class AtCollectionModelFactory<T extends AtCollectionModel> {
   /// Expected to return an instance of T
+  /// added the parameters for at_jsoncollection_model for create 
   T create(String id, String namespace, String collectionName);
 
   /// returns [true] if the factory creates instances of atCollectionModel for the given [collectionName]

@@ -30,13 +30,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   void initState() {
     super.initState();
     if (isEditing) {
-      _titleController.text = widget.entry!.title;
-      _descController.text = widget.entry!.description;
-      if (SecureJournalEntry.isEncrypted(widget.entry!.content)) {
+      _titleController.text = widget.entry!.title!;
+      _descController.text = widget.entry!.description!;
+      if (SecureJournalEntry.isEncrypted(widget.entry!.content!)) {
         _showPasswordPrompt = true;
         _isPrivate = true;
       } else {
-        _entryController.text = widget.entry!.content;
+        _entryController.text = widget.entry!.content!;
       }
     }
   }
@@ -44,7 +44,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   void _tryDecrypt() {
     final password = _passwordController.text.trim();
     try {
-      final decrypted = SecureJournalEntry.decryptContent(widget.entry!.content, password);
+      final decrypted = SecureJournalEntry.decryptContent(widget.entry!.content!, password);
       setState(() {
         _entryController.text = decrypted!;
         _showPasswordPrompt = false;

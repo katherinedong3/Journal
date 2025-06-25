@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:at_client_mobile/at_client_mobile.dart';
 
-import 'package:at_client/at_client.dart';
+import '../at_collection_model.dart' as journal; // Add alias
+
 import 'package:journal/at_collection/at_collection/collection_util.dart';
 import 'package:journal/at_collection/at_collection/collections.dart';
 import 'package:at_utils/at_logger.dart';
@@ -9,21 +11,22 @@ import 'collection_methods_impl.dart';
 
 class AtCollectionModelOperationsImpl<T> implements AtCollectionModelOperations {
   final _logger = AtSignLogger('AtCollectionModelOperationsImpl');
-  late AtCollectionModel atCollectionModel;
+  late journal.AtCollectionModel<T> atCollectionModel; // Use prefixed model
   late AtCollectionMethodImpl collectionMethodImpl;
 
   AtCollectionModelOperationsImpl(this.atCollectionModel) {
-    collectionMethodImpl = AtCollectionMethodImpl(atCollectionModel);
+    collectionMethodImpl = AtCollectionMethodImpl<T>(atCollectionModel as AtCollectionModel<T>);
   }
 
   @override
   Future<bool> save(
       {bool autoReshare = true, ObjectLifeCycleOptions? options}) async {
     var jsonObject = CollectionUtil.initAndValidateJson(
-        collectionModelJson: toJson(),
-        id: atCollectionModel.id,
-        collectionName: atCollectionModel.collectionName,
-        namespace: atCollectionModel.namespace);
+      collectionModelJson: toJson(),
+      id: atCollectionModel.id,
+      collectionName: atCollectionModel.collectionName,
+      namespace: atCollectionModel.namespace,
+    );
 
     final Completer<bool> completer = Completer<bool>();
 
@@ -31,45 +34,44 @@ class AtCollectionModelOperationsImpl<T> implements AtCollectionModelOperations 
 
     await collectionMethodImpl
         .save(
-            jsonEncodedData: jsonEncode(jsonObject),
-            options: options,
-            share: autoReshare)
+          jsonEncodedData: jsonEncode(jsonObject),
+          options: options,
+          share: autoReshare,
+        )
         .forEach((AtOperationItemStatus atOperationItemStatus) {
-      /// save will update self key as well as the shared keys
-      /// the first event that will be coming in the stream would be the AtOperationItemStatus of selfKey
       isSelfKeySaved ??= atOperationItemStatus.complete;
 
-      if (atOperationItemStatus.complete == false) {
+      if (!atOperationItemStatus.complete) {
         isAllKeySaved = false;
       }
     });
 
-    if (autoReshare == false) {
-      completer.complete(isSelfKeySaved);
-      return isSelfKeySaved ?? false;
-    }
-
-    completer.complete(isAllKeySaved);
+    completer.complete(autoReshare ? isAllKeySaved : isSelfKeySaved);
     return completer.future;
   }
 
   @override
   Future<List<String>> sharedWith() async {
-    CollectionUtil.checkForNullOrEmptyValues(atCollectionModel.id,
-        atCollectionModel.collectionName, atCollectionModel.namespace);
+    CollectionUtil.checkForNullOrEmptyValues(
+      atCollectionModel.id,
+      atCollectionModel.collectionName,
+      atCollectionModel.namespace,
+    );
 
-    List<String> sharedWithList = [];
-    String formattedId = CollectionUtil.format(atCollectionModel.id);
-    String formattedCollectionName =
+    final sharedWithList = <String>[];
+    final formattedId = CollectionUtil.format(atCollectionModel.id);
+    final formattedCollectionName =
         CollectionUtil.format(atCollectionModel.collectionName);
 
-    var allKeys = await _getAtClient().getAtKeys(
-        regex: CollectionUtil.makeRegex(
-            formattedId: formattedId,
-            collectionName: formattedCollectionName,
-            namespace: atCollectionModel.namespace));
+    final allKeys = await _getAtClient().getAtKeys(
+      regex: CollectionUtil.makeRegex(
+        formattedId: formattedId,
+        collectionName: formattedCollectionName,
+        namespace: atCollectionModel.namespace,
+      ),
+    );
 
-    for (var atKey in allKeys) {
+    for (final atKey in allKeys) {
       if (atKey.sharedWith != null) {
         _logger.finest('Adding shared with of $atKey');
         sharedWithList.add(atKey.sharedWith!);
@@ -82,55 +84,48 @@ class AtCollectionModelOperationsImpl<T> implements AtCollectionModelOperations 
   @override
   Future<bool> share(List<String> atSigns,
       {ObjectLifeCycleOptions? options}) async {
-    var jsonObject = CollectionUtil.initAndValidateJson(
-        collectionModelJson: toJson(),
-        id: atCollectionModel.id,
-        collectionName: atCollectionModel.collectionName,
-        namespace: atCollectionModel.namespace);
+    final jsonObject = CollectionUtil.initAndValidateJson(
+      collectionModelJson: toJson(),
+      id: atCollectionModel.id,
+      collectionName: atCollectionModel.collectionName,
+      namespace: atCollectionModel.namespace,
+    );
 
-    List<AtOperationItemStatus> allSharedKeyStatus = [];
+    final allSharedKeyStatus = <AtOperationItemStatus>[];
+
     await collectionMethodImpl
-        .shareWith(atSigns,
-            jsonEncodedData: jsonEncode(jsonObject), options: options)
-        .forEach((element) {
-      allSharedKeyStatus.add(element);
-    });
+        .shareWith(
+          atSigns,
+          jsonEncodedData: jsonEncode(jsonObject),
+          options: options,
+        )
+        .forEach(allSharedKeyStatus.add);
 
-    bool allOperationsSuccessful = true;
-    for (var sharedKeyStatus in allSharedKeyStatus) {
-      if (sharedKeyStatus.complete == false) {
-        allOperationsSuccessful = false;
-        break;
-      }
-    }
-    return allOperationsSuccessful;
+    return allSharedKeyStatus.every((status) => status.complete);
   }
 
   @override
   Future<bool> delete() async {
-    CollectionUtil.checkForNullOrEmptyValues(atCollectionModel.id,
-        atCollectionModel.collectionName, atCollectionModel.namespace);
+    CollectionUtil.checkForNullOrEmptyValues(
+      atCollectionModel.id,
+      atCollectionModel.collectionName,
+      atCollectionModel.namespace,
+    );
 
     bool isSelfKeyDeleted = false;
-    await collectionMethodImpl
-        .delete()
-        .forEach((AtOperationItemStatus operationEvent) {
-      if (operationEvent.complete) {
+
+    await collectionMethodImpl.delete().forEach((event) {
+      if (event.complete) {
         isSelfKeyDeleted = true;
       }
     });
 
-    if (!isSelfKeyDeleted) {
-      return false;
-    }
+    if (!isSelfKeyDeleted) return false;
 
-    /// unsharing all shared keys.
     bool isAllShareKeysUnshared = true;
 
-    await collectionMethodImpl
-        .unshare()
-        .forEach((AtOperationItemStatus operationEvent) {
-      if (operationEvent.complete == false) {
+    await collectionMethodImpl.unshare().forEach((event) {
+      if (!event.complete) {
         isAllShareKeysUnshared = false;
       }
     });
@@ -142,10 +137,8 @@ class AtCollectionModelOperationsImpl<T> implements AtCollectionModelOperations 
   Future<bool> unshare({List<String>? atSigns}) async {
     bool isAllShareKeysUnshared = true;
 
-    await collectionMethodImpl
-        .unshare(atSigns: atSigns)
-        .forEach((AtOperationItemStatus operationEvent) {
-      if (operationEvent.complete == false) {
+    await collectionMethodImpl.unshare(atSigns: atSigns).forEach((event) {
+      if (!event.complete) {
         isAllShareKeysUnshared = false;
       }
     });
@@ -153,9 +146,7 @@ class AtCollectionModelOperationsImpl<T> implements AtCollectionModelOperations 
     return isAllShareKeysUnshared;
   }
 
-  AtClient _getAtClient() {
-    return AtClientManager.getInstance().atClient;
-  }
+  AtClient _getAtClient() => AtClientManager.getInstance().atClient;
 
   @override
   fromJson(Map<String, dynamic> jsonObject) {

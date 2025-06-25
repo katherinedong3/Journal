@@ -1,20 +1,19 @@
+import 'package:at_onboarding_flutter/at_onboarding_flutter.dart';
 import 'package:journal/at_collection/at_collection/collection_util.dart';
 import 'package:journal/at_collection/at_collection/impl/default_key_maker.dart';
-
-import 'package:at_commons/at_commons.dart';
 import 'package:at_utils/at_logger.dart';
 
-import 'package:at_client/at_client.dart';
 import 'package:journal/at_collection/at_collection/collections.dart';
 
 /// [AtCollectionMethodImpl] have the implementation of all the methods available in collections package.
 /// These methods are wrapped with a stream or future return types for the end consumption.
 
-class AtCollectionMethodImpl {
+class AtCollectionMethodImpl<T> {
   final _logger = AtSignLogger('AtCollectionModelMethodsImpl');
 
   late DefaultKeyMaker keyMaker = DefaultKeyMaker();
-  AtCollectionModel atCollectionModel;
+  
+  AtCollectionModel<T> atCollectionModel;
 
   AtCollectionMethodImpl(this.atCollectionModel);
 

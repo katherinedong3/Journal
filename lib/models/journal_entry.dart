@@ -1,8 +1,14 @@
+///import 'package:at_client/at_client.dart';
+import 'dart:convert';
+
 import 'package:at_client/at_client.dart';
-import 'package:at_client/at_collection/at_collection_model.dart';
+import 'package:at_client/src/at_collection/at_collection_model.dart';
+import 'package:journal/at_collection/at_collection/at_collection_model.dart' as journal;
+///import 'package:journal/at_collection/at_collection/collections.dart';
+import 'package:journal/at_collection/at_collection_proposal.dart'; 
+import 'package:journal/at_collection/at_collection_proposal_service.dart';
 
-
-class JournalEntry extends AtCollectionModel {
+class JournalEntry extends journal.AtCollectionModel<Map<String, dynamic>> {
   String? title;
   String? description;
   String? content;
@@ -34,45 +40,67 @@ class JournalEntry extends AtCollectionModel {
     content = json['content'];
   }
 
-  /// Create a proposal from this entry for sharing with another user
   AtCollectionProposal toProposal(String recipientAtsign, {String? note}) {
     return AtCollectionProposal(
       entryId: id,
       recipient: recipientAtsign,
       proposedData: toJson(),
-      note: note,
+      note: note, sender: '',
     );
   }
 
-  /// Apply a proposal update to this journal entry
   void applyProposalUpdate(Map<String, dynamic> proposedData) {
     title = proposedData['title'] ?? title;
     description = proposedData['description'] ?? description;
     content = proposedData['content'] ?? content;
   }
 
-  /// Check if this entry is editable by the current atSign
-  bool get isEditable => metadata?[AtCollectionConstants.permissionEdit] == true;
+  /// Instead of using metadata constants, you could define your own metadata structure.
+  bool get isEditable {
+    final permissions = metadata?['permissions'];
+    if (permissions is Map<String, dynamic>) {
+      return permissions['edit'] == true;
+    }
+    return false;
+  }
+  
+  get metadata => null;
+  
+   //Private backing field for createdAt
+  DateTime? _createdAt;
 
-  /// Remove edit access to this entry from a given atSign
-  Future<void> revokeAccess(String atsign) async {
-    await AtCollection().unshareEntryWith(entry: this, sharedWith: atsign);
+  // public getter
+  DateTime? get createdAt => _createdAt;
+
+  // public setter
+  set createdAt(DateTime? value) {
+    _createdAt = value;
   }
 
-  /// Send this entry to another user for edit proposal
+  /// Callbacks for proposal actions — assumes you’ve implemented a service
   Future<void> proposeEditTo(String recipientAtsign, {String? note}) async {
     final proposal = toProposal(recipientAtsign, note: note);
-    await AtCollection().sendProposal(proposal);
+    await AtCollectionProposalService.sendProposal(proposal);
   }
 
-  /// Accept a received proposal (modifies the entry)
-  Future<void> acceptProposal(AtCollectionProposal proposal) async {
-    applyProposalUpdate(proposal.proposedData);
-    await AtCollection().updateEntry(this);
+  static Future<void> acceptProposal<T extends AtCollectionModel<Map<String, dynamic>>>(
+    AtCollectionProposal proposal, {
+    required T updatedEntry,
+  }) async {
+    updatedEntry.fromJson(proposal.proposedData);
+    final atClient = AtClientManager.getInstance().atClient;
+    final atKey = AtKey()
+      ..key = updatedEntry.id
+      ..sharedWith = null
+      ..namespace = updatedEntry.namespace;
+
+    await atClient.put(atKey, jsonEncode(updatedEntry.toJson()));
   }
 
-  /// Reject a proposal (optionally notify sender)
-  Future<void> rejectProposal(AtCollectionProposal proposal, {String? rejectionNote}) async {
-    await AtCollection().rejectProposal(proposal, rejectionNote: rejectionNote);
+
+  Future<void> revokeAccess(String atsign) async {
+    await AtCollectionProposalService.unshareEntry(this as AtCollectionModel, atsign);
   }
+
+
 }
